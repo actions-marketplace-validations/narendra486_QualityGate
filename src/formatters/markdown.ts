@@ -38,8 +38,6 @@ export class MarkdownFormatter {
             '',
             this.findingsSection(context),
             '',
-            this.metadataSection(context),
-            '',
             '<!-- qualitygate-action-comment -->',
         ].join('\n');
     }

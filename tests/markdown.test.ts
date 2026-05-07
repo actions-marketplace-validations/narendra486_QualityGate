@@ -49,7 +49,8 @@ describe('MarkdownFormatter', () => {
         expect(comment).toContain('## Security Summary');
         expect(comment).toContain('img.shields.io');
         expect(comment).toContain('<details>');
-        expect(comment).toContain('Processed SARIF files');
+        expect(comment).not.toContain('## Scan Metadata');
+        expect(comment).not.toContain('Processed SARIF files');
         expect(comment).toContain('<!-- qualitygate-action-comment -->');
     });
 
