@@ -1,79 +1,58 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-import { Finding, SeverityCounts } from '../types/sarif';
-import { MarkdownFormatter } from '../formatters/markdown';
+import { MarkdownContext, MarkdownFormatter } from '../formatters/markdown';
+import { QUALITY_GATE_COMMENT_MARKER } from '../templates/default';
+import { RetryHandler } from '../utils/retry';
 
 export class PrCommentHandler {
-    private octokit: ReturnType<typeof github.getOctokit>;
-    private context = github.context;
+    private readonly octokit: ReturnType<typeof github.getOctokit>;
+    private readonly context = github.context;
+    private readonly formatter = new MarkdownFormatter();
 
     constructor(githubToken: string) {
         this.octokit = github.getOctokit(githubToken);
     }
 
-    async post(
-        counts: SeverityCounts,
-        findings: Finding[],
-        passed: boolean,
-        threshold: string
-    ): Promise<boolean> {
-        if (this.context.eventName !== 'pull_request') {
+    async post(context: MarkdownContext): Promise<boolean> {
+        if (!github.context.payload.pull_request) {
             core.info('Not a pull request event, skipping PR comment');
             return false;
         }
 
-        const prNumber = this.context.payload.pull_request?.number;
-        if (!prNumber) {
-            core.warning('Could not determine PR number');
-            return false;
-        }
-
+        const prNumber = github.context.payload.pull_request.number;
         const { owner, repo } = this.context.repo;
+        const body = this.formatter.formatPrComment(context);
 
-        try {
-            const formatter = new MarkdownFormatter();
-            const body = formatter.formatPrComment(counts, findings, passed, threshold);
+        const comments = (await RetryHandler.execute(
+            () => this.octokit.paginate(this.octokit.rest.issues.listComments, { owner, repo, issue_number: prNumber }),
+            { maxAttempts: 3, delayMs: 750 }
+        )) as Array<{ id: number; body?: string | null }>;
+        const existing = comments.filter(comment => comment.body?.includes(QUALITY_GATE_COMMENT_MARKER));
 
-            // Check for existing comment
-            const comments = await this.listComments(owner, repo, prNumber);
-            const existingComment = comments.find(c => c.body?.includes('# Quality Gate'));
+        if (existing.length > 0) {
+            const primary = existing[0];
+            if (!primary) return false;
+            const duplicates = existing.slice(1);
+            await RetryHandler.execute(
+                () => this.octokit.rest.issues.updateComment({ owner, repo, comment_id: primary.id, body }),
+                { maxAttempts: 3, delayMs: 750 }
+            );
 
-            if (existingComment) {
-                await this.octokit.rest.issues.updateComment({
-                    owner,
-                    repo,
-                    comment_id: existingComment.id,
-                    body,
-                });
-                core.info(`Updated existing PR comment (ID: ${existingComment.id})`);
-            } else {
-                await this.octokit.rest.issues.createComment({
-                    owner,
-                    repo,
-                    issue_number: prNumber,
-                    body,
-                });
-                core.info('Created new PR comment');
+            for (const duplicate of duplicates) {
+                await RetryHandler.execute(
+                    () => this.octokit.rest.issues.deleteComment({ owner, repo, comment_id: duplicate.id }),
+                    { maxAttempts: 2, delayMs: 500 }
+                );
             }
-
+            core.info(`Updated QualityGate PR comment ${primary.id}`);
             return true;
-        } catch (error) {
-            core.warning(`Failed to post PR comment: ${error}`);
-            return false;
         }
-    }
 
-    private async listComments(owner: string, repo: string, prNumber: number) {
-        try {
-            const response = await this.octokit.paginate(this.octokit.rest.issues.listComments, {
-                owner,
-                repo,
-                issue_number: prNumber,
-            });
-            return response;
-        } catch (error) {
-            core.warning(`Failed to list comments: ${error}`);
-            return [];
-        }
+        await RetryHandler.execute(
+            () => this.octokit.rest.issues.createComment({ owner, repo, issue_number: prNumber, body }),
+            { maxAttempts: 3, delayMs: 750 }
+        );
+        core.info('Created QualityGate PR comment');
+        return true;
     }
 }

@@ -11,8 +11,9 @@ export class DeduplicationEngine {
         const deduplicated: Finding[] = [];
 
         for (const finding of findings) {
-            if (!seen.has(finding.uniqueId)) {
-                seen.add(finding.uniqueId);
+            const key = finding.fingerprint || finding.uniqueId;
+            if (!seen.has(key)) {
+                seen.add(key);
                 deduplicated.push(finding);
             }
         }

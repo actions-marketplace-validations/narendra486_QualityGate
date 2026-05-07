@@ -1,4 +1,5 @@
-import { Finding, SeverityCounts } from '../types/sarif';
+import { Finding, Severity, SeverityCounts } from '../types/sarif';
+import { SeverityUtils } from '../utils/severity';
 
 export class SeverityCounter {
     count(findings: Finding[]): SeverityCounts {
@@ -17,17 +18,11 @@ export class SeverityCounter {
         return counts;
     }
 
-    countBySeverity(findings: Finding[], severity: 'low' | 'medium' | 'high' | 'critical'): number {
+    countBySeverity(findings: Finding[], severity: Severity): number {
         return findings.filter(f => f.severity === severity).length;
     }
 
-    countAtOrAboveSeverity(
-        findings: Finding[],
-        threshold: 'low' | 'medium' | 'high' | 'critical'
-    ): number {
-        const severityLevels = ['low', 'medium', 'high', 'critical'];
-        const thresholdIndex = severityLevels.indexOf(threshold);
-
-        return findings.filter(f => severityLevels.indexOf(f.severity) >= thresholdIndex).length;
+    countAtOrAboveSeverity(findings: Finding[], threshold: Severity): number {
+        return findings.filter(f => SeverityUtils.isAtOrAboveThreshold(f.severity, threshold)).length;
     }
 }

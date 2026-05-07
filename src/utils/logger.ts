@@ -25,7 +25,7 @@ export class Logger {
         core.endGroup();
     }
 
-    static logObject(label: string, obj: any): void {
+    static logObject(label: string, obj: unknown): void {
         core.debug(`${label}: ${JSON.stringify(obj, null, 2)}`);
     }
 }

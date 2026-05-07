@@ -1,3 +1,6 @@
+export type Severity = 'low' | 'medium' | 'high' | 'critical';
+export type QualityGateStatus = 'PASS' | 'FAIL';
+
 export interface SarifArtifactLocation {
     uri?: string;
     uriBaseId?: string;
@@ -42,7 +45,7 @@ export interface SarifMessage {
 export interface SarifResult {
     ruleId?: string;
     ruleIndex?: number;
-    level?: 'error' | 'warning' | 'note' | 'none';
+    level?: 'error' | 'warning' | 'note' | 'none' | string;
     message?: SarifMessage;
     locations?: SarifLocation[];
     codeFlows?: Array<{
@@ -66,7 +69,7 @@ export interface SarifResult {
         description?: SarifMessage;
     }>;
     workItemUris?: string[];
-    properties?: Record<string, any>;
+    properties?: Record<string, unknown>;
 }
 
 export interface SarifRule {
@@ -76,7 +79,12 @@ export interface SarifRule {
     fullDescription?: SarifMessage;
     helpUri?: string;
     help?: SarifMessage;
-    properties?: Record<string, any>;
+    defaultConfiguration?: {
+        level?: 'error' | 'warning' | 'note' | 'none' | string;
+        rank?: number;
+        parameters?: Record<string, unknown>;
+    };
+    properties?: Record<string, unknown>;
 }
 
 export interface SarifRun {
@@ -86,11 +94,24 @@ export interface SarifRun {
             version?: string;
             informationUri?: string;
             rules?: SarifRule[];
-            properties?: Record<string, any>;
+            semanticVersion?: string;
+            properties?: Record<string, unknown>;
         };
     };
     results?: SarifResult[];
-    properties?: Record<string, any>;
+    invocations?: Array<{
+        executionSuccessful?: boolean;
+        startTimeUtc?: string;
+        endTimeUtc?: string;
+        commandLine?: string;
+        workingDirectory?: SarifArtifactLocation;
+    }>;
+    automationDetails?: {
+        id?: string;
+        guid?: string;
+    };
+    originalUriBaseIds?: Record<string, { uri?: string }>;
+    properties?: Record<string, unknown>;
 }
 
 export interface SarifLog {
@@ -103,13 +124,25 @@ export interface Finding {
     ruleId: string;
     ruleName?: string;
     description?: string;
-    severity: 'low' | 'medium' | 'high' | 'critical';
+    severity: Severity;
     message: string;
     file: string;
     line: number;
     column?: number;
+    endLine?: number;
+    endColumn?: number;
     tool: string;
+    toolVersion?: string;
+    scanner?: string;
+    sarifFile?: string;
+    runIndex: number;
+    resultIndex: number;
+    baselineState?: string;
+    suppressed: boolean;
     uniqueId: string;
+    fingerprint: string;
+    helpUri?: string;
+    properties?: Record<string, unknown>;
 }
 
 export interface SeverityCounts {
@@ -122,8 +155,45 @@ export interface SeverityCounts {
 
 export interface QualityGateResult {
     passed: boolean;
+    blocked: boolean;
     counts: SeverityCounts;
     findings: Finding[];
-    threshold: string;
+    threshold: Severity;
     failOnCount?: number;
+    thresholdFindingCount: number;
+    reasons: string[];
+}
+
+export interface SarifMetadata {
+    file: string;
+    version: string;
+    runCount: number;
+    resultCount: number;
+    tools: string[];
+    malformed?: boolean;
+    error?: string;
+}
+
+export interface AggregationResult {
+    findings: Finding[];
+    metadata: SarifMetadata[];
+    processedFiles: string[];
+    skippedFiles: string[];
+}
+
+export interface ActionConfig {
+    sarifFile: string;
+    severityThreshold: Severity;
+    githubToken: string;
+    prComment: boolean;
+    failOnCount?: number;
+    ignoreRuleIds: string[];
+    ignorePaths: string[];
+    deduplicate: boolean;
+    baselineFile?: string;
+    enableAnnotations: boolean;
+    enableStepSummary: boolean;
+    markdownTemplate?: string;
+    maxFindingsDisplay: number;
+    jsonExportFile?: string;
 }
