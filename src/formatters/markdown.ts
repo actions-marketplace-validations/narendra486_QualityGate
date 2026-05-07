@@ -122,13 +122,6 @@ export class MarkdownFormatter {
             '',
             table,
             suffix,
-            '',
-            '<details>',
-            `<summary>Findings grouped by scanner and rule (${findings.length})</summary>`,
-            '',
-            this.groupedFindings(findings),
-            '',
-            '</details>',
         ].join('\n');
     }
 
