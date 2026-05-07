@@ -9,6 +9,10 @@ inputs:
     description: 'Severity threshold (low|medium|high|critical)'
     required: true
     default: 'high'
+  mode:
+    description: 'Enforcement mode: block fails the workflow with exit 1; report posts results without failing.'
+    required: false
+    default: 'block'
   github_token:
     description: 'GitHub token for PR comments and optional check runs.'
     required: false

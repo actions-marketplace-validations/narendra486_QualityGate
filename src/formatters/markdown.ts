@@ -9,7 +9,7 @@ export interface MarkdownContext {
     processedFiles: string[];
     skippedFiles: string[];
     durationMs: number;
-    config: Pick<ActionConfig, 'severityThreshold' | 'maxFindingsDisplay' | 'failOnCount'>;
+    config: Pick<ActionConfig, 'severityThreshold' | 'mode' | 'maxFindingsDisplay' | 'failOnCount'>;
     markdownTemplate?: string;
 }
 
@@ -50,6 +50,7 @@ export class MarkdownFormatter {
             `**Status:** ${result.passed ? '✅ PASS' : '❌ FAIL'}`,
             `**Blocked:** ${result.blocked ? 'true' : 'false'}`,
             `**Threshold:** ${result.threshold}`,
+            `**Mode:** ${context.config.mode}`,
             `**Duration:** ${(durationMs / 1000).toFixed(2)}s`,
             '',
             '## Findings by Severity',
@@ -59,6 +60,7 @@ export class MarkdownFormatter {
             '## Threshold Configuration',
             '',
             `- severity_threshold: \`${result.threshold}\``,
+            `- mode: \`${context.config.mode}\``,
             `- fail_on_count: \`${result.failOnCount ?? 'not set'}\``,
             '',
             this.findingsSection(context),

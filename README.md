@@ -48,6 +48,7 @@ jobs:
         with:
           sarif_file: results
           severity_threshold: high
+          mode: block
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_comment: true
           enable_annotations: true
@@ -60,6 +61,7 @@ jobs:
 | ----- | -------- | ------- | ----------- |
 | `sarif_file` | Yes | | Single SARIF file, multiline list, directory, or glob. Supports `.sarif` and `.sarif.json`. |
 | `severity_threshold` | Yes | `high` | One of `low`, `medium`, `high`, `critical`. |
+| `mode` | No | `block` | `block` fails the workflow with `exit 1`; `report` posts results without failing. |
 | `github_token` | No | | Token for PR comments and optional check runs. |
 | `pr_comment` | No | `true` | Post or update a PR comment. |
 | `fail_on_count` | No | | Fail when total findings exceed this integer. |
@@ -97,6 +99,21 @@ jobs:
 
 `fail_on_count` is evaluated in addition to severity thresholding.
 
+## Enforcement Mode
+
+QualityGate has two simple modes:
+
+| Mode | Workflow result | PR blocking |
+| ---- | --------------- | ----------- |
+| `block` | Fails with `core.setFailed()` and `process.exit(1)` when policy fails. | Blocks merge when the workflow check is required. |
+| `report` | Emits a warning and exits successfully when policy fails. | Does not block merge. |
+
+Default:
+
+```yaml
+mode: block
+```
+
 ## Severity Normalization
 
 | SARIF level | Normalized severity |
@@ -123,6 +140,7 @@ Full scanner examples are available in [docs/EXAMPLE_WORKFLOWS.md](docs/EXAMPLE_
       sarif-results/semgrep.sarif
       sarif-results/checkov.sarif
     severity_threshold: high
+    mode: block
     github_token: ${{ secrets.GITHUB_TOKEN }}
     pr_comment: true
     enable_annotations: true
@@ -137,6 +155,7 @@ Full scanner examples are available in [docs/EXAMPLE_WORKFLOWS.md](docs/EXAMPLE_
   with:
     sarif_file: services/**/sarif
     severity_threshold: medium
+    mode: block
     ignore_paths: "**/test/**,**/fixtures/**,third_party/**"
     github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
@@ -150,6 +169,7 @@ Full scanner examples are available in [docs/EXAMPLE_WORKFLOWS.md](docs/EXAMPLE_
     sarif_file: current-results
     baseline_file: examples/baselines/baseline.sarif
     severity_threshold: high
+    mode: block
     github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
 

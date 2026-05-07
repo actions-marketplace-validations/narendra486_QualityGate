@@ -23,6 +23,7 @@ async function run(): Promise<void> {
         const config = readInputs();
         Logger.startGroup('QualityGate configuration');
         Logger.info(`severity_threshold=${config.severityThreshold}`);
+        Logger.info(`mode=${config.mode}`);
         Logger.info(`deduplicate=${config.deduplicate}`);
         Logger.info(`pr_comment=${config.prComment}`);
         Logger.info(`enable_annotations=${config.enableAnnotations}`);
@@ -103,8 +104,12 @@ async function run(): Promise<void> {
 
         if (!result.passed) {
             const message = evaluator.generateSummary(result);
-            ErrorReporter.setFailed(QualityGateIssues.qualityGateFailed(message));
-            process.exit(1);
+            if (config.mode === 'block') {
+                ErrorReporter.setFailed(QualityGateIssues.qualityGateFailed(message));
+                process.exit(1);
+            }
+            ErrorReporter.warning(QualityGateIssues.qualityGateFailed(`Report-only mode: ${message}`));
+            return;
         }
 
         Logger.info(evaluator.generateSummary(result));

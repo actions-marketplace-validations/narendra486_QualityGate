@@ -45,7 +45,11 @@ The evaluator counts findings at or above the configured threshold:
 | `medium` | medium, high, critical |
 | `low` | low, medium, high, critical |
 
-`fail_on_count` is an additional total-finding limit. If either rule fails, `blocked=true`, `quality_gate_status=FAIL`, `core.setFailed()` is called, and the process exits with code `1`.
+`fail_on_count` is an additional total-finding limit. If either rule fails, `blocked=true` and `quality_gate_status=FAIL`.
+
+In `mode: block`, `core.setFailed()` is called and the process exits with code `1`.
+
+In `mode: report`, QualityGate emits a GitHub warning and exits successfully after writing comments, outputs, and summaries.
 
 ## Extension Points
 

@@ -1,5 +1,5 @@
 import * as core from '@actions/core';
-import { ActionConfig, Severity } from '../types/sarif';
+import { ActionConfig, QualityGateMode, Severity } from '../types/sarif';
 import { SeverityUtils } from '../utils/severity';
 import { QualityGateError, QualityGateIssues } from '../utils/errors';
 
@@ -35,11 +35,17 @@ export function readInputs(): ActionConfig {
         );
     }
 
+    const mode = (core.getInput('mode') || 'block').trim().toLowerCase();
+    if (mode !== 'block' && mode !== 'report') {
+        throw new QualityGateError(QualityGateIssues.invalidInput('mode must be one of: block, report'));
+    }
+
     const maxFindingsDisplay = getOptionalInteger('max_findings_display') ?? 100;
 
     return {
         sarifFile: core.getInput('sarif_file', { required: true }),
         severityThreshold: severityThreshold as Severity,
+        mode: mode as QualityGateMode,
         githubToken: core.getInput('github_token'),
         prComment: getBooleanInput('pr_comment', true),
         failOnCount: getOptionalInteger('fail_on_count'),

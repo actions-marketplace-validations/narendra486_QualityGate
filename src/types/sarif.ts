@@ -1,5 +1,6 @@
 export type Severity = 'low' | 'medium' | 'high' | 'critical';
 export type QualityGateStatus = 'PASS' | 'FAIL';
+export type QualityGateMode = 'block' | 'report';
 
 export interface SarifArtifactLocation {
     uri?: string;
@@ -184,6 +185,7 @@ export interface AggregationResult {
 export interface ActionConfig {
     sarifFile: string;
     severityThreshold: Severity;
+    mode: QualityGateMode;
     githubToken: string;
     prComment: boolean;
     failOnCount?: number;
