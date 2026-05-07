@@ -1,16 +1,17 @@
-name: 'Quality Gate'
-description: 'A GitHub Action to enforce quality gates based on SARIF security scan results'
-author: 'Your Name'
+name: 'QualityGate - Universal SARIF Security Quality Gate'
+description: 'Enterprise-grade GitHub Action for SARIF-based security quality gates supporting CodeQL, Snyk, Trivy, Semgrep, Checkov, Grype, and other scanners.'
+author: 'QualityGate maintainers'
 inputs:
   sarif_file:
-    description: 'Path to SARIF file(s) - single file or multiline list'
+    description: 'SARIF path input: single file, multiline file list, directory, or glob.'
     required: true
   severity_threshold:
     description: 'Severity threshold (low|medium|high|critical)'
     required: true
+    default: 'high'
   github_token:
-    description: 'GitHub token for API access'
-    required: true
+    description: 'GitHub token for PR comments and optional check runs.'
+    required: false
   pr_comment:
     description: 'Whether to post PR comments (true/false)'
     required: false
@@ -29,7 +30,25 @@ inputs:
     required: false
     default: 'true'
   baseline_file:
-    description: 'Optional SARIF baseline file for comparison'
+    description: 'Optional SARIF baseline file, directory, glob, or multiline list.'
+    required: false
+  enable_annotations:
+    description: 'Whether to create GitHub workflow annotations.'
+    required: false
+    default: 'true'
+  enable_step_summary:
+    description: 'Whether to write the GitHub Step Summary.'
+    required: false
+    default: 'true'
+  markdown_template:
+    description: 'Optional custom markdown template path using {{status}}, {{summary_table}}, {{findings_table}}, and related tokens.'
+    required: false
+  max_findings_display:
+    description: 'Maximum findings displayed in PR comments and step summaries.'
+    required: false
+    default: '100'
+  json_export_file:
+    description: 'Optional path to write a JSON report artifact.'
     required: false
 outputs:
   total_findings:
@@ -44,8 +63,12 @@ outputs:
     description: 'Number of low findings'
   quality_gate_status:
     description: 'PASS or FAIL'
+  blocked:
+    description: 'true when the quality gate failed'
+  processed_files:
+    description: 'Newline-separated list of processed SARIF files'
 runs:
-  using: 'node24'
+  using: 'node20'
   main: 'dist/index.js'
 branding:
   icon: 'shield'

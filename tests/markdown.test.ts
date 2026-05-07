@@ -1,52 +1,77 @@
-import { MarkdownFormatter } from '../src/formatters/markdown';
-import { Finding, SeverityCounts } from '../src/types/sarif';
+import { MarkdownContext, MarkdownFormatter } from '../src/formatters/markdown';
+import { Finding, QualityGateResult } from '../src/types/sarif';
+
+const findings: Finding[] = [
+    {
+        ruleId: 'CVE-123',
+        ruleName: 'Critical CVE',
+        severity: 'critical',
+        message: 'Critical package vulnerability',
+        file: 'services/api/package-lock.json',
+        line: 42,
+        tool: 'Trivy',
+        sarifFile: 'trivy.sarif',
+        runIndex: 0,
+        resultIndex: 0,
+        suppressed: false,
+        uniqueId: 'a',
+        fingerprint: 'a',
+    },
+];
+
+const result: QualityGateResult = {
+    passed: false,
+    blocked: true,
+    counts: { critical: 1, high: 0, medium: 0, low: 0, total: 1 },
+    findings,
+    threshold: 'high',
+    thresholdFindingCount: 1,
+    reasons: ['1 finding(s) at or above high'],
+};
+
+const context: MarkdownContext = {
+    result,
+    findings,
+    metadata: [{ file: 'trivy.sarif', version: '2.1.0', runCount: 1, resultCount: 1, tools: ['Trivy'] }],
+    processedFiles: ['trivy.sarif'],
+    skippedFiles: [],
+    durationMs: 1234,
+    config: { severityThreshold: 'high', maxFindingsDisplay: 100 },
+};
 
 describe('MarkdownFormatter', () => {
     const formatter = new MarkdownFormatter();
 
-    const mockCounts: SeverityCounts = {
-        critical: 2,
-        high: 1,
-        medium: 3,
-        low: 5,
-        total: 11
-    };
+    it('formats enterprise PR failure comments', () => {
+        const comment = formatter.formatPrComment(context);
 
-    const mockFindings: Finding[] = [
-        { ruleId: 'rule1', severity: 'critical', message: 'Critical issue', file: 'main.js', line: 10, tool: 'test', uniqueId: '1' },
-        { ruleId: 'rule2', severity: 'high', message: 'High issue', file: 'utils.js', line: 20, tool: 'test', uniqueId: '2' }
-    ];
-
-    it('should format failed PR comment', () => {
-        const comment = formatter.formatPrComment(mockCounts, mockFindings, false, 'high');
-
-        expect(comment).toContain('# Quality Gate Failed');
-        expect(comment).toContain('Findings exceeded the **high** severity threshold.');
-        expect(comment).toContain('Critical');
-        expect(comment).toContain('rule1');
-        expect(comment).toContain('High');
+        expect(comment).toContain('# 🚨 Quality Gate Failed');
+        expect(comment).toContain('## Security Summary');
+        expect(comment).toContain('img.shields.io');
+        expect(comment).toContain('<details>');
+        expect(comment).toContain('Processed SARIF files');
+        expect(comment).toContain('<!-- qualitygate-action-comment -->');
     });
 
-    it('should format passed PR comment', () => {
-        const comment = formatter.formatPrComment(mockCounts, [], true, 'high');
+    it('formats pass comments with required copy', () => {
+        const comment = formatter.formatPrComment({
+            ...context,
+            result: { ...result, passed: true, blocked: false, counts: { critical: 0, high: 0, medium: 0, low: 1, total: 1 } },
+            findings: [],
+        });
 
-        expect(comment).toContain('# Quality Gate Passed');
-        expect(comment).toContain('No findings exceeded the configured severity threshold.');
+        expect(comment).toContain('# ✅ Quality Gate Passed');
+        expect(comment).toContain('No findings exceeded configured threshold.');
     });
 
-    it('should truncate long messages', () => {
-        const longMessage = 'A'.repeat(200);
-        const finding: Finding = {
-            ruleId: 'rule1',
-            severity: 'high',
-            message: longMessage,
-            file: 'test.js',
-            line: 1,
-            tool: 'test',
-            uniqueId: '1'
-        };
+    it('truncates displayed findings', () => {
+        const manyFindings = Array.from({ length: 3 }, (_, index) => ({ ...findings[0]!, line: index + 1, fingerprint: String(index), uniqueId: String(index) }));
+        const comment = formatter.formatPrComment({
+            ...context,
+            findings: manyFindings,
+            config: { severityThreshold: 'high', maxFindingsDisplay: 1 },
+        });
 
-        const comment = formatter.formatPrComment(mockCounts, [finding], false, 'high');
-        expect(comment).toContain('...');
+        expect(comment).toContain('Findings truncated: showing 1 of 3');
     });
 });

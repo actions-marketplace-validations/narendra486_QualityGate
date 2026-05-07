@@ -1,294 +1,271 @@
 # QualityGate
 
-[![CI](https://github.com/your-org/QualityGate/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/QualityGate/actions/workflows/ci.yml)
-[![Release](https://github.com/your-org/QualityGate/actions/workflows/release.yml/badge.svg)](https://github.com/your-org/QualityGate/actions/workflows/release.yml)
+**QualityGate - Universal SARIF Security Quality Gate**
 
-A production-grade reusable GitHub Action that enforces security quality gates based on SARIF scan results from tools like CodeQL, Trivy, Snyk, Semgrep, and Checkov.
+Enterprise-grade GitHub Action for SARIF-based security quality gates supporting CodeQL, Snyk, Trivy, Semgrep, Checkov, Grype, Kubescape, DevSkim, and other SARIF 2.1.0 scanners.
+
+QualityGate works only from SARIF files. It does not require GitHub Advanced Security APIs and works on GitHub-hosted and self-hosted runners.
 
 ## Features
 
-- ✅ **SARIF 2.1.0 Compatible** - Supports all major security scanners
-- ✅ **Enterprise Ready** - Works with GitHub Enterprise and public GitHub
-- ✅ **PR Integration** - Posts detailed comments and blocks merges
-- ✅ **Step Summary** - Rich GitHub Actions summaries
-- ✅ **Flexible Thresholds** - Configurable severity-based gating
-- ✅ **Multi-file Support** - Process multiple SARIF files
-- ✅ **Deduplication** - Remove duplicate findings
-- ✅ **Filtering** - Ignore specific rules and paths
-- ✅ **Annotations** - GitHub Checks API integration
-- ✅ **Retry Logic** - Robust API error handling
-- ✅ **TypeScript** - Strong typing and clean architecture
+- Parse SARIF 2.1.0 files from multiple scanners
+- Aggregate single files, multiline lists, directories, and globs
+- Support multiple SARIF runs per file
+- Normalize SARIF severity across scanners
+- Deduplicate findings with stable fingerprints
+- Ignore configured rules and paths
+- Suppress baseline findings from a baseline SARIF
+- Generate professional PR comments with badges, emojis, collapsible sections, metadata, and truncation
+- Generate GitHub Step Summary with threshold configuration, blocked status, duration, and processed files
+- Emit GitHub workflow annotations and optional check runs
+- Fail workflows with `core.setFailed()` and `process.exit(1)`
+- Export machine-readable JSON reports
 
 ## Quick Start
 
 ```yaml
-name: Security Quality Gate
+name: Security
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches:
+      - main
 
 permissions:
   contents: read
   pull-requests: write
-  security-events: read
+  checks: write
 
 jobs:
-  security-scan:
+  security:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run CodeQL
-        uses: github/codeql-action/analyze@v3
-        with:
-          output: sarif-results
-
       - name: Quality Gate
         uses: your-org/QualityGate@v1
         with:
-          sarif_file: sarif-results/javascript.sarif
+          sarif_file: results
           severity_threshold: high
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_comment: true
+          enable_annotations: true
+          enable_step_summary: true
 ```
 
 ## Inputs
 
 | Input | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `sarif_file` | ✅ | - | SARIF file path(s) - single file or multiline list |
-| `severity_threshold` | ✅ | - | Threshold: `low`, `medium`, `high`, `critical` |
-| `github_token` | ✅ | - | GitHub token for API access |
-| `pr_comment` | ❌ | `true` | Post PR comments |
-| `fail_on_count` | ❌ | - | Fail if total findings exceed count |
-| `ignore_rule_ids` | ❌ | - | Comma-separated rule IDs to ignore |
-| `ignore_paths` | ❌ | - | Glob patterns for paths to ignore |
-| `deduplicate` | ❌ | `true` | Deduplicate findings |
-| `baseline_file` | ❌ | - | SARIF baseline for comparison |
+| ----- | -------- | ------- | ----------- |
+| `sarif_file` | Yes | | Single SARIF file, multiline list, directory, or glob. Supports `.sarif` and `.sarif.json`. |
+| `severity_threshold` | Yes | `high` | One of `low`, `medium`, `high`, `critical`. |
+| `github_token` | No | | Token for PR comments and optional check runs. |
+| `pr_comment` | No | `true` | Post or update a PR comment. |
+| `fail_on_count` | No | | Fail when total findings exceed this integer. |
+| `ignore_rule_ids` | No | | Comma-separated rule IDs to ignore. |
+| `ignore_paths` | No | | Comma-separated glob patterns for finding paths to ignore. |
+| `deduplicate` | No | `true` | Deduplicate findings before evaluation. |
+| `baseline_file` | No | | SARIF baseline file, directory, glob, or multiline list. |
+| `enable_annotations` | No | `true` | Create workflow annotations for findings. |
+| `enable_step_summary` | No | `true` | Write GitHub Step Summary. |
+| `markdown_template` | No | | Reserved for custom enterprise markdown templates. |
+| `max_findings_display` | No | `100` | Maximum findings displayed in comments and summaries. |
+| `json_export_file` | No | | Optional path for a JSON report artifact. |
 
 ## Outputs
 
 | Output | Description |
-|--------|-------------|
-| `total_findings` | Total number of findings |
-| `critical_count` | Critical severity count |
-| `high_count` | High severity count |
-| `medium_count` | Medium severity count |
-| `low_count` | Low severity count |
-| `quality_gate_status` | `PASS` or `FAIL` |
+| ------ | ----------- |
+| `total_findings` | Total finding count after filtering, baseline suppression, and deduplication. |
+| `critical_count` | Critical finding count. |
+| `high_count` | High finding count. |
+| `medium_count` | Medium finding count. |
+| `low_count` | Low finding count. |
+| `quality_gate_status` | `PASS` or `FAIL`. |
+| `blocked` | `true` when the quality gate failed. |
+| `processed_files` | Newline-separated processed SARIF files. |
 
-## Supported Scanners
+## Quality Gate Logic
 
-- **CodeQL** - GitHub's semantic code analysis
-- **Trivy** - Comprehensive vulnerability scanner
-- **Snyk** - Open source security platform
-- **Semgrep** - Fast, syntax-aware semantic code analysis
-- **Checkov** - Infrastructure as Code scanner
-- **Grype** - Vulnerability scanner for SBOM
-- **Any SARIF 2.1.0 compliant tool**
+| Threshold | Workflow fails on |
+| --------- | ----------------- |
+| `critical` | Critical findings |
+| `high` | High and critical findings |
+| `medium` | Medium, high, and critical findings |
+| `low` | Low, medium, high, and critical findings |
+
+`fail_on_count` is evaluated in addition to severity thresholding.
+
+## Severity Normalization
+
+| SARIF level | Normalized severity |
+| ----------- | ------------------- |
+| `error` | `high` |
+| `warning` | `medium` |
+| `note` / `none` | `low` |
+
+Numeric security severity values are normalized as CVSS-like scores: `>=9 critical`, `>=7 high`, `>=4 medium`, `>0 low`.
 
 ## Examples
 
-### Basic Usage
+Full scanner examples are available in [docs/EXAMPLE_WORKFLOWS.md](docs/EXAMPLE_WORKFLOWS.md).
+
+### Multiple Scanner Aggregation
 
 ```yaml
-- uses: your-org/QualityGate@v1
-  with:
-    sarif_file: results.sarif
-    severity_threshold: medium
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-```
-
-### Multiple Files
-
-```yaml
-- uses: your-org/QualityGate@v1
+- name: Quality Gate
+  uses: your-org/QualityGate@v1
   with:
     sarif_file: |
-      results/codeql.sarif
-      results/trivy.sarif
-      results/snyk.sarif
+      sarif-results/codeql.sarif
+      sarif-results/trivy.sarif
+      sarif-results/semgrep.sarif
+      sarif-results/checkov.sarif
     severity_threshold: high
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-```
-
-### Advanced Configuration
-
-```yaml
-- uses: your-org/QualityGate@v1
-  with:
-    sarif_file: results/*.sarif
-    severity_threshold: critical
-    fail_on_count: 10
-    ignore_rule_ids: rule-1,rule-2
-    ignore_paths: test/**,vendor/**
-    deduplicate: true
     github_token: ${{ secrets.GITHUB_TOKEN }}
     pr_comment: true
+    enable_annotations: true
+    json_export_file: qualitygate-report.json
 ```
 
-### With CodeQL
+### Monorepo
 
 ```yaml
-- name: Initialize CodeQL
-  uses: github/codeql-action/init@v3
-  with:
-    languages: javascript
-
-- name: Autobuild
-  uses: github/codeql-action/autobuild@v3
-
-- name: Analyze
-  uses: github/codeql-action/analyze@v3
-  with:
-    output: sarif-results
-
 - name: Quality Gate
   uses: your-org/QualityGate@v1
   with:
-    sarif_file: sarif-results/javascript.sarif
+    sarif_file: services/**/sarif
+    severity_threshold: medium
+    ignore_paths: "**/test/**,**/fixtures/**,third_party/**"
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Baseline Suppression
+
+```yaml
+- name: Quality Gate
+  uses: your-org/QualityGate@v1
+  with:
+    sarif_file: current-results
+    baseline_file: examples/baselines/baseline.sarif
     severity_threshold: high
     github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-### With Trivy
+### Reusable Workflow Caller
 
 ```yaml
-- name: Scan container
-  uses: aquasecurity/trivy-action@master
-  with:
-    scan-type: 'image'
-    scan-ref: 'alpine:latest'
-    format: 'sarif'
-    output: 'trivy-results.sarif'
-
-- name: Quality Gate
-  uses: your-org/QualityGate@v1
-  with:
-    sarif_file: trivy-results.sarif
-    severity_threshold: high
-    github_token: ${{ secrets.GITHUB_TOKEN }}
+jobs:
+  security:
+    uses: your-org/QualityGate/.github/workflows/examples.yml@v1
+    permissions:
+      contents: read
+      pull-requests: write
+      checks: write
 ```
 
-## PR Comments
+## Scanner Compatibility
 
-### Failed Quality Gate
+| Scanner | Status | Notes |
+| ------- | ------ | ----- |
+| CodeQL | Supported | Uses rule metadata and `security-severity` when available. |
+| Trivy | Supported | Supports CVE SARIF and numeric severities. |
+| Snyk | Supported | Supports Snyk SARIF severity properties. |
+| Semgrep | Supported | Supports SARIF levels and rule metadata. |
+| Checkov | Supported | Supports IaC SARIF output and rule IDs. |
+| Grype | Supported | Supports vulnerability SARIF output. |
+| Kubescape | Supported | Supports SARIF 2.1.0 output. |
+| DevSkim | Supported | Supports SARIF levels and rule metadata. |
+| Any SARIF 2.1.0 tool | Supported | Parsed best-effort from SARIF standard fields. |
 
-# ❌ Quality Gate Failed
+## PR Comment Format
 
-Findings exceeded the **high** severity threshold.
+Failed gates produce comments like:
 
-## Summary
+```markdown
+# 🚨 Quality Gate Failed
+
+## Security Summary
 
 | Severity | Count |
 | -------- | ----- |
-| 🔴 Critical | 2     |
-| 🟠 High     | 5     |
-| 🟡 Medium   | 3     |
-| 🔵 Low      | 1     |
+| Critical | 2 |
+| High | 5 |
+| Medium | 7 |
+| Low | 10 |
 
 ## Findings
 
 | Severity | Rule | File | Line | Message |
 | -------- | ---- | ---- | ---- | ------- |
-| 🔴 critical | CWE-79 | src/index.html | 15 | Cross-site scripting vulnerability |
-| 🔴 critical | CWE-89 | src/db.js | 42 | SQL injection vulnerability |
+```
 
-### Passed Quality Gate
+Passed gates produce:
 
+```markdown
 # ✅ Quality Gate Passed
 
 No findings exceeded configured threshold.
+```
 
-## Summary
+The generated comment also includes shield badges, scanner metadata, processed SARIF files, execution duration, collapsible grouped findings, and truncation when findings exceed `max_findings_display`.
 
-| Severity | Count |
-| -------- | ----- |
-| 🔴 Critical | 0     |
-| 🟠 High     | 0     |
-| 🟡 Medium   | 2     |
-| 🔵 Low      | 5     |
+## Enterprise Deployment
+
+Recommended permissions:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+```
+
+For push-only workflows, omit `pull-requests: write` and set `pr_comment: false`.
+
+For self-hosted runners:
+
+- Ensure Node.js 20 compatible GitHub Actions runner support.
+- Store SARIF files in the workspace before running QualityGate.
+- Avoid scanner uploads as the enforcement source; QualityGate reads local SARIF files only.
+
+## Security Considerations
+
+- No unsafe `eval`.
+- No shell execution using user-controlled inputs.
+- SARIF files are read through filesystem APIs.
+- GitHub API calls use retry logic and pagination.
+- Workflows in this repository pin third-party actions to commit SHAs.
+- Use least-privilege token permissions.
+- Treat SARIF content as untrusted; QualityGate escapes markdown table-sensitive output.
 
 ## Architecture
 
-```
-QualityGate/
-├── action.yml          # Action metadata
-├── src/
-│   ├── index.ts        # Main entry point
-│   ├── types/sarif.ts  # SARIF type definitions
-│   ├── parser/         # SARIF parsing logic
-│   ├── quality/        # Quality evaluation
-│   ├── github/         # GitHub API integration
-│   ├── utils/          # Utilities
-│   └── formatters/     # Output formatting
-├── tests/              # Unit tests
-└── dist/               # Compiled JavaScript
-```
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Build
 npm run build
-
-# Test
 npm test
-
-# Lint
-npm run lint
-
-# Package for distribution
 npm run package
 ```
 
-## Testing
+The marketplace entrypoint is `dist/index.js`, produced with `@vercel/ncc`.
 
-```bash
-# Run unit tests
-npm test
+## Troubleshooting
 
-# Run with coverage
-npm run test:coverage
-
-# Test action locally
-npm run test:action
-```
-
-## Compatibility
-
-- ✅ **Node.js**: 20.x
-- ✅ **GitHub**: Enterprise and Public
-- ✅ **SARIF**: 2.1.0 specification
-- ✅ **Runners**: GitHub-hosted and self-hosted
-- ✅ **Permissions**: `contents: read`, `pull-requests: write`
-
-## Security
-
-- No external API dependencies
-- Pure SARIF file processing
-- No secrets or sensitive data handling
-- Enterprise-compatible token handling
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Ensure all tests pass
-5. Submit a pull request
+| Symptom | Resolution |
+| ------- | ---------- |
+| `No SARIF files found` | Confirm `sarif_file` points to an existing file, directory, glob, or multiline list. |
+| PR comment missing | Ensure the event is `pull_request`, `github_token` is provided, and `pull-requests: write` is granted. |
+| Check run missing | Grant `checks: write`; annotations still work without creating check runs. |
+| Unexpected severity | Inspect SARIF `level`, `properties.security-severity`, and rule metadata. |
+| Baseline not suppressing | Baseline matching uses stable fingerprints from tool, rule, file, line, and message. |
+| Malformed SARIF | QualityGate skips malformed files with warnings and continues processing valid SARIF. |
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Support
-
-- 📖 [Documentation](https://github.com/your-org/QualityGate)
-- 🐛 [Issues](https://github.com/your-org/QualityGate/issues)
-- 💬 [Discussions](https://github.com/your-org/QualityGate/discussions)
+MIT

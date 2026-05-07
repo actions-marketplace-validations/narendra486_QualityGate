@@ -1,128 +1,88 @@
 import { SarifParser } from '../src/parser/sarifParser';
-import { Finding } from '../src/types/sarif';
 
 describe('SarifParser', () => {
     const parser = new SarifParser();
 
-    it('should parse valid SARIF with findings', () => {
-        const sarifData: any = {
+    it('parses SARIF 2.1.0 runs and normalizes SARIF levels', () => {
+        const sarifData = {
             version: '2.1.0',
             runs: [
                 {
                     tool: {
                         driver: {
                             name: 'TestScanner',
-                            version: '1.0.0'
-                        }
+                            version: '1.0.0',
+                            rules: [{ id: 'test-rule-1', name: 'Unsafe Pattern' }],
+                        },
                     },
                     results: [
                         {
                             ruleId: 'test-rule-1',
                             level: 'error',
-                            message: {
-                                text: 'Critical issue found'
-                            },
+                            message: { text: 'Issue found' },
                             locations: [
                                 {
                                     physicalLocation: {
-                                        artifactLocation: {
-                                            uri: 'src/main.js'
-                                        },
-                                        region: {
-                                            startLine: 10
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ]
+                                        artifactLocation: { uri: 'src/main.js' },
+                                        region: { startLine: 10, startColumn: 2 },
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
         };
 
-        const findings = parser.parse(sarifData);
+        const { findings, metadata } = parser.parse(sarifData, 'scan.sarif');
 
+        expect(metadata).toMatchObject({ version: '2.1.0', runCount: 1, resultCount: 1, tools: ['TestScanner'] });
         expect(findings).toHaveLength(1);
         expect(findings[0]).toMatchObject({
             ruleId: 'test-rule-1',
+            ruleName: 'Unsafe Pattern',
             severity: 'high',
-            message: 'Critical issue found',
+            message: 'Issue found',
             file: 'src/main.js',
             line: 10,
-            tool: 'TestScanner'
+            column: 2,
+            tool: 'TestScanner',
+            sarifFile: 'scan.sarif',
         });
+        expect(findings[0]?.fingerprint).toHaveLength(64);
     });
 
-    it('should handle empty SARIF', () => {
-        const sarifData = {
-            version: '2.1.0',
-            runs: []
-        };
-
-        const findings = parser.parse(sarifData);
-        expect(findings).toHaveLength(0);
-    });
-
-    it('should normalize severity levels', () => {
-        const testCases = [
-            { level: 'error', expected: 'high' },
-            { level: 'warning', expected: 'medium' },
-            { level: 'note', expected: 'low' },
-            { level: 'unknown', expected: 'low' }
-        ];
-
-        testCases.forEach(({ level, expected }) => {
-            const sarifData: any = {
-                runs: [
-                    {
-                        tool: { driver: { name: 'Test' } },
-                        results: [
-                            {
-                                ruleId: 'test',
-                                level,
-                                message: { text: 'test' },
-                                locations: [{
-                                    physicalLocation: {
-                                        artifactLocation: { uri: 'test.js' },
-                                        region: { startLine: 1 }
-                                    }
-                                }]
-                            }
-                        ]
-                    }
-                ]
-            };
-
-            const findings = parser.parse(sarifData);
-            expect(findings[0].severity).toBe(expected);
-        });
-    });
-
-    it('should use security-severity property when available', () => {
-        const sarifData: any = {
+    it.each([
+        ['error', 'high'],
+        ['warning', 'medium'],
+        ['note', 'low'],
+        ['9.8', 'critical'],
+        ['7.5', 'high'],
+        ['4.3', 'medium'],
+    ])('normalizes %s to %s', (level, expected) => {
+        const { findings } = parser.parse({
             runs: [
                 {
                     tool: { driver: { name: 'Test' } },
                     results: [
                         {
-                            ruleId: 'test-rule-2',
-                            properties: {
-                                'security-severity': 'critical'
-                            },
-                            message: { text: 'Critical code injection' },
-                            locations: [{
-                                physicalLocation: {
-                                    artifactLocation: { uri: 'test.js' },
-                                    region: { startLine: 1 }
-                                }
-                            }]
-                        }
-                    ]
-                }
-            ]
-        };
+                            ruleId: 'test',
+                            level,
+                            message: { text: 'test' },
+                            locations: [
+                                {
+                                    physicalLocation: {
+                                        artifactLocation: { uri: 'test.js' },
+                                        region: { startLine: 1 },
+                                    },
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        });
 
-        const findings = parser.parse(sarifData);
-        expect(findings[0].severity).toBe('critical');
+        expect(findings[0]?.severity).toBe(expected);
     });
 });

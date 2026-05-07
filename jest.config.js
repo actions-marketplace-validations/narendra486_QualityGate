@@ -6,5 +6,8 @@ module.exports = {
     moduleFileExtensions: ['ts', 'js', 'json'],
     transform: {
         '^.+\\.(ts|tsx)$': ['ts-jest', { tsconfig: 'tsconfig.json' }]
+    },
+    moduleNameMapper: {
+        '^@actions/core$': '<rootDir>/tests/mocks/actions-core.ts'
     }
 };

@@ -1,4 +1,4 @@
-import { Finding, SeverityCounts, QualityGateResult } from '../types/sarif';
+import { Finding, QualityGateResult, Severity } from '../types/sarif';
 import { SeverityCounter } from './thresholds';
 import * as core from '@actions/core';
 
@@ -7,34 +7,36 @@ export class QualityGateEvaluator {
 
     evaluate(
         findings: Finding[],
-        threshold: 'low' | 'medium' | 'high' | 'critical',
+        threshold: Severity,
         failOnCount?: number
     ): QualityGateResult {
         const counts = this.counter.count(findings);
-        let passed = true;
-
-        // Check severity threshold
+        const reasons: string[] = [];
         const countAtOrAboveThreshold = this.counter.countAtOrAboveSeverity(findings, threshold);
 
         if (countAtOrAboveThreshold > 0) {
-            passed = false;
+            reasons.push(`${countAtOrAboveThreshold} finding(s) at or above ${threshold}`);
             core.info(
                 `Found ${countAtOrAboveThreshold} findings at or above threshold "${threshold}"`
             );
         }
 
-        // Check explicit count limit
         if (failOnCount !== undefined && counts.total > failOnCount) {
-            passed = false;
+            reasons.push(`${counts.total} total finding(s) exceeds fail_on_count ${failOnCount}`);
             core.info(`Found ${counts.total} findings, exceeds limit of ${failOnCount}`);
         }
 
+        const passed = reasons.length === 0;
+
         return {
             passed,
+            blocked: !passed,
             counts,
             findings,
             threshold,
             failOnCount,
+            thresholdFindingCount: countAtOrAboveThreshold,
+            reasons,
         };
     }
 
