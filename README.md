@@ -46,10 +46,7 @@ jobs:
         uses: your-org/QualityGate@v1
         with:
           sarif_file: results
-          severity_threshold: high
-          mode: block
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          pr_comment: true
           enable_annotations: true
           enable_step_summary: true
 ```
@@ -59,10 +56,10 @@ jobs:
 | Input | Required | Default | Description |
 | ----- | -------- | ------- | ----------- |
 | `sarif_file` | Yes | | Single SARIF file, multiline list, directory, or glob. Supports `.sarif` and `.sarif.json`. |
-| `severity_threshold` | Yes | `high` | One of `low`, `medium`, `high`, `critical`. |
+| `severity_threshold` | No | `high` | One of `low`, `medium`, `high`, `critical`. Default `high` blocks high and critical findings. Set `medium` to also block medium findings. |
 | `mode` | No | `block` | `block` fails the workflow with `exit 1`; `report` posts results without failing. |
 | `github_token` | No | | Token for PR comments and optional check runs. |
-| `pr_comment` | No | `true` | Post or update a PR comment. |
+| `pr_comment` | No | `true` | Optional. Post or update a PR comment. Set `false` to disable comments. |
 | `fail_on_count` | No | | Fail when total findings exceed this integer. |
 | `ignore_rule_ids` | No | | Comma-separated rule IDs to ignore. |
 | `ignore_paths` | No | | Comma-separated glob patterns for finding paths to ignore. |
@@ -137,10 +134,7 @@ Full scanner examples are available in [docs/EXAMPLE_WORKFLOWS.md](docs/EXAMPLE_
       sarif-results/trivy.sarif
       sarif-results/semgrep.sarif
       sarif-results/checkov.sarif
-    severity_threshold: high
-    mode: block
     github_token: ${{ secrets.GITHUB_TOKEN }}
-    pr_comment: true
     enable_annotations: true
     json_export_file: qualitygate-report.json
 ```
@@ -153,7 +147,6 @@ Full scanner examples are available in [docs/EXAMPLE_WORKFLOWS.md](docs/EXAMPLE_
   with:
     sarif_file: services/**/sarif
     severity_threshold: medium
-    mode: block
     ignore_paths: "**/test/**,**/fixtures/**,third_party/**"
     github_token: ${{ secrets.GITHUB_TOKEN }}
 ```

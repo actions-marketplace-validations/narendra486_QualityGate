@@ -6,8 +6,8 @@ inputs:
     description: 'SARIF path input: single file, multiline file list, directory, or glob.'
     required: true
   severity_threshold:
-    description: 'Severity threshold (low|medium|high|critical)'
-    required: true
+    description: 'Optional severity threshold. Defaults to high, which blocks high and critical findings. Set medium to also block medium findings.'
+    required: false
     default: 'high'
   mode:
     description: 'Enforcement mode: block fails the workflow with exit 1; report posts results without failing.'
@@ -17,7 +17,7 @@ inputs:
     description: 'GitHub token for PR comments and optional check runs.'
     required: false
   pr_comment:
-    description: 'Whether to post PR comments (true/false)'
+    description: 'Optional. Whether to post PR comments. Defaults to true; set false to disable comments.'
     required: false
     default: 'true'
   fail_on_count:

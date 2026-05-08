@@ -18,9 +18,7 @@ jobs:
         uses: ./
         with:
           sarif_file: examples/sarif/codeql.sarif
-          severity_threshold: high
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          pr_comment: true
           enable_annotations: true
           enable_step_summary: true
 
@@ -32,9 +30,7 @@ jobs:
         uses: ./
         with:
           sarif_file: examples/sarif/trivy.sarif
-          severity_threshold: high
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          pr_comment: true
 
   semgrep:
     runs-on: ubuntu-latest
@@ -57,7 +53,6 @@ jobs:
         uses: ./
         with:
           sarif_file: examples/sarif
-          severity_threshold: high
           github_token: ${{ secrets.GITHUB_TOKEN }}
           pr_comment: false
 
@@ -83,10 +78,8 @@ jobs:
           sarif_file: |
             examples/sarif/codeql.sarif
             examples/sarif/trivy.sarif
-          severity_threshold: high
           fail_on_count: 20
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          pr_comment: true
           enable_annotations: true
           enable_step_summary: true
           json_export_file: qualitygate-report.json

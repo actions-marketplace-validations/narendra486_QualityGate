@@ -43,7 +43,6 @@ jobs:
           sarif_file: sarif-results/javascript.sarif
           severity_threshold: high
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          pr_comment: true
           enable_annotations: true
           enable_step_summary: true
 ```
@@ -209,6 +208,5 @@ jobs:
           severity_threshold: high
           fail_on_count: 50
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          pr_comment: true
           json_export_file: qualitygate-report.json
 ```

@@ -28,7 +28,7 @@ function getOptionalInteger(name: string): number | undefined {
 }
 
 export function readInputs(): ActionConfig {
-    const severityThreshold = core.getInput('severity_threshold', { required: true }).trim().toLowerCase();
+    const severityThreshold = (core.getInput('severity_threshold') || 'high').trim().toLowerCase();
     if (!SeverityUtils.isValid(severityThreshold)) {
         throw new QualityGateError(
             QualityGateIssues.invalidInput('severity_threshold must be one of: low, medium, high, critical')
