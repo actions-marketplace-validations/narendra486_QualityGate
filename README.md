@@ -66,7 +66,7 @@ jobs:
 | `fail_on_count` | No | | Fail when total findings exceed this integer. |
 | `ignore_rule_ids` | No | | Comma-separated rule IDs to ignore. |
 | `ignore_paths` | No | | Comma-separated glob patterns for finding paths to ignore. |
-| `deduplicate` | No | `true` | Deduplicate findings before evaluation. |
+| `deduplicate` | No | `true` | Optional. Deduplicate findings before evaluation. Set `false` only if every scanner occurrence should count separately. |
 | `enable_annotations` | No | `true` | Create workflow annotations for findings. |
 | `enable_step_summary` | No | `true` | Write GitHub Step Summary. |
 | `markdown_template` | No | | Reserved for custom enterprise markdown templates. |

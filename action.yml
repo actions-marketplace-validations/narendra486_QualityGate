@@ -30,7 +30,7 @@ inputs:
     description: 'Comma-separated glob patterns for paths to ignore'
     required: false
   deduplicate:
-    description: 'Whether to deduplicate findings (true/false)'
+    description: 'Optional. Deduplicate findings before evaluation. Defaults to true; set false to count every occurrence.'
     required: false
     default: 'true'
   enable_annotations:
