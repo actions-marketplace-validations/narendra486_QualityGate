@@ -25,4 +25,11 @@ describe('BaselineComparator', () => {
 
         expect(filtered.map(finding => finding.fingerprint)).toEqual(['new']);
     });
+
+    it('keeps all findings when no baseline context exists', () => {
+        const comparator = new BaselineComparator();
+        const filtered = comparator.suppressBaselineFindings([makeFinding('current')], []);
+
+        expect(filtered.map(finding => finding.fingerprint)).toEqual(['current']);
+    });
 });

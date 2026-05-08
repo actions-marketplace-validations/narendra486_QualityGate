@@ -25,6 +25,7 @@ async function run(): Promise<void> {
         Logger.info(`severity_threshold=${config.severityThreshold}`);
         Logger.info(`mode=${config.mode}`);
         Logger.info(`deduplicate=${config.deduplicate}`);
+        Logger.info(`new_findings_only=${config.newFindingsOnly}`);
         Logger.info(`pr_comment=${config.prComment}`);
         Logger.info(`enable_annotations=${config.enableAnnotations}`);
         Logger.info(`enable_step_summary=${config.enableStepSummary}`);
@@ -43,10 +44,12 @@ async function run(): Promise<void> {
         findings = filterFindings(findings, config.ignoreRuleIds, config.ignorePaths);
         findings = findings.filter(finding => !finding.suppressed && finding.baselineState !== 'absent');
 
-        if (config.baselineFile) {
+        if (config.newFindingsOnly && config.baselineFile) {
             const baselineFiles = await resolveSarifFiles(config.baselineFile);
             const baselineAggregation = await aggregator.aggregate(baselineFiles);
             findings = new BaselineComparator().suppressBaselineFindings(findings, baselineAggregation.findings);
+        } else if (config.newFindingsOnly) {
+            Logger.info('new_findings_only=true but no baseline_file was provided; treating current findings as new');
         }
 
         if (config.deduplicate) {

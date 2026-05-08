@@ -52,6 +52,7 @@ export function readInputs(): ActionConfig {
         ignoreRuleIds: getCsvInput('ignore_rule_ids'),
         ignorePaths: getCsvInput('ignore_paths'),
         deduplicate: getBooleanInput('deduplicate', true),
+        newFindingsOnly: getBooleanInput('new_findings_only', true),
         baselineFile: core.getInput('baseline_file') || undefined,
         enableAnnotations: getBooleanInput('enable_annotations', true),
         enableStepSummary: getBooleanInput('enable_step_summary', true),

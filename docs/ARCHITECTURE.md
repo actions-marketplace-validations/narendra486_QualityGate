@@ -51,6 +51,12 @@ In `mode: block`, `core.setFailed()` is called and the process exits with code `
 
 In `mode: report`, QualityGate emits a GitHub warning and exits successfully after writing comments, outputs, and summaries.
 
+## New Findings Only
+
+`new_findings_only` defaults to `true`. When `baseline_file` is provided, QualityGate compares current SARIF findings against the baseline SARIF and suppresses matching old findings before evaluating the gate.
+
+If `new_findings_only=true` but no `baseline_file` is provided, the action has no old-finding context and treats current findings as new.
+
 ## Extension Points
 
 New scanner behavior should be added in `parser/normalizer.ts` only when SARIF fields need special interpretation. New reporting formats should use `MarkdownContext` from `formatters/markdown.ts` so summaries, PR comments, and JSON reports remain consistent.

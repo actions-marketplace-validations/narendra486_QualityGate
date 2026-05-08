@@ -192,6 +192,7 @@ export interface ActionConfig {
     ignoreRuleIds: string[];
     ignorePaths: string[];
     deduplicate: boolean;
+    newFindingsOnly: boolean;
     baselineFile?: string;
     enableAnnotations: boolean;
     enableStepSummary: boolean;
